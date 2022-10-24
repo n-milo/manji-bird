@@ -2,6 +2,7 @@
  * MANJI BIRD
  * Compile and load, then press "continue" three times to play
  * Press any key in the JTAG console to start, then any key to jump
+ * Github: https://github.com/n-milo/manji-bird
  */
 
 #define PIXEL_BUFFER ((volatile char *) 0x8000000)
@@ -73,6 +74,7 @@ void srand(unsigned seed);
 int putchar(int c);
 int puts(char *s);
 void *memcpy(void *dst, const void *src, int n);
+void puthex(unsigned hex);
 
 // --------------------------------------
 //          BEGIN IMPLEMENTATION
@@ -121,6 +123,13 @@ run(void) {
 
     puts("Welcome to MANJI BIRD\nSelect this box and press any key to jump\nPress any key to begin...");
 
+    draw();
+    while (check_for_data_in_jtag() == 0); // wait for key to be pressed
+
+    // give the player a little jump so they know it works
+    jump();
+
+    // we can take a timer snapshot by writing (anything) to the snapshot register
     *TIMER_SNAPSHOT_LOW = 0;
     unsigned time = (*TIMER_SNAPSHOT_HIGH << 16u) | *TIMER_SNAPSHOT_LOW;
     srand(time);
@@ -131,11 +140,6 @@ run(void) {
         pipe_heights[i] = (rand() & 31) + 8;
     }
 
-    draw();
-
-    while (check_for_data_in_jtag() == 0); // wait for key to be pressed
-
-    jump();
     for(;;) {
         int status = *TIMER_STATUS;
         if (status & 1) {
@@ -319,6 +323,26 @@ puts(char *s) {
         putchar(*s);
     putchar('\n');
     return 0;
+}
+
+void
+puthex(unsigned hex) {
+    putchar('0');
+    putchar('x');
+    for (int i = 7; i >= 0; i--) {
+        char hex_char;
+        unsigned hex_digit = (hex >> (i*4u)) & 0xFu;
+
+        if (hex_digit >= 10) {
+            hex_char = hex_digit - 10 + 'A';
+        } else {
+            hex_char = hex_digit + '0';
+        }
+
+        putchar(hex_char);
+    }
+
+    putchar('\n');
 }
 
 void *
